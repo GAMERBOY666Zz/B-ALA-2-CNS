@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS CORE - Security Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a0a;
+            color: #ff3333;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            grid-template-rows: 80px 1fr 240px;
+            height: 100vh;
+            gap: 1px;
+            background: #ff3333;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #1a0a0a 0%, #2a0a0a 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+            border-bottom: 2px solid #ff3333;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(255, 51, 51, 0.1) 2px,
+                rgba(255, 51, 51, 0.1) 4px
+            );
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-shadow: 0 0 15px #ff3333;
+            position: relative;
+        }
+
+        .logo::after {
+            content: 'v2.4.7';
+            position: absolute;
+            top: -8px;
+            right: -45px;
+            font-size: 10px;
+            color: #ff6666;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(3, auto);
+            gap: 30px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff3333;
+            text-shadow: 0 0 10px #ff3333;
+        }
+
+        .status-label {
+            font-size: 10px;
+            color: #ff6666;
+            margin-top: 2px;
+        }
+
+        .panel {
+            background: #0f0f0f;
+            border: 1px solid #330000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                linear-gradient(90deg, transparent 98%, rgba(255, 51, 51, 0.3) 100%),
+                linear-gradient(0deg, transparent 98%, rgba(255, 51, 51, 0.3) 100%);
+            pointer-events: none;
+        }
+
+        .panel-title {
+            background: linear-gradient(90deg, #1a0a0a, #2a0a0a);
+            padding: 12px 20px;
+            border-bottom: 1px solid #ff3333;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-content {
+            padding: 20px;
+            height: calc(100% - 45px);
+            overflow-y: auto;
+        }
+
+        /* Left Panel - System Metrics */
+        .metric {
+            margin-bottom: 25px;
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #ff6666;
+            margin-bottom: 8px;
+        }
+
+        .metric-bar {
+            height: 6px;
+            background: #1a0a0a;
+            border: 1px solid #330000;
+            position: relative;
+        }
+
+        .metric-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff3333, #ff6666);
+            box-shadow: 0 0 10px #ff3333;
+            transition: width 0.5s ease;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .control-btn {
+            background: linear-gradient(135deg, #1a0a0a, #2a0a0a);
+            border: 1px solid #ff3333;
+            color: #ff3333;
+            padding: 12px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: linear-gradient(135deg, #ff3333, #ff6666);
+            color: #000;
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.5);
+        }
+
+        /* Center Panel - Network Map */
+        .network-map {
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #networkCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid #ff3333;
+            padding: 15px;
+            font-size: 11px;
+        }
+
+        .map-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            color: #ff3333;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: #ff6666;
+        }
+
+        /* Right Panel - Threat Feed */
+        .threat-item {
+            background: rgba(255, 51, 51, 0.05);
+            border: 1px solid #330000;
+            padding: 15px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .threat-item.critical {
+            border-color: #ff3333;
+            background: rgba(255, 51, 51, 0.1);
+        }
+
+        .threat-item.warning {
+            border-color: #ff6666;
+        }
+
+        .threat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .threat-level {
+            background: #ff3333;
+            color: #000;
+            padding: 3px 8px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .threat-time {
+            font-size: 9px;
+            color: #ff6666;
+        }
+
+        .threat-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .threat-desc {
+            font-size: 10px;
+            color: #ff6666;
+        }
+
+        /* Bottom Panel */
+        .terminal {
+            background: #000;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .terminal-line {
+            margin: 2px 0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .terminal-time {
+            color: #ff3333;
+            opacity: 0.7;
+        }
+
+        .terminal-critical { color: #ff3333; }
+        .terminal-warning { color: #ff6666; }
+        .terminal-info { color: #ff9999; }
+
+        .graph-container {
+            background: #000;
+            padding: 15px;
+        }
+
+        #activityGraph {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+
+        .scanline {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ff3333, transparent);
+            animation: scan 3s linear infinite;
+            pointer-events: none;
+        }
+
+        .glitch {
+            position: relative;
+        }
+
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch::before {
+            left: 2px;
+            text-shadow: -2px 0 #ff00ff;
+            clip: rect(24px, 550px, 90px, 0);
+            animation: glitch-anim 3s infinite linear alternate-reverse;
+        }
+
+        .glitch::after {
+            left: -2px;
+            text-shadow: -2px 0 #00ffff;
+            clip: rect(85px, 550px, 140px, 0);
+            animation: glitch-anim2 3s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim {
+            0% { clip: rect(42px, 9999px, 44px, 0); }
+            5% { clip: rect(12px, 9999px, 59px, 0); }
+            10% { clip: rect(48px, 9999px, 29px, 0); }
+            15% { clip: rect(42px, 9999px, 73px, 0); }
+            20% { clip: rect(63px, 9999px, 27px, 0); }
+            25% { clip: rect(34px, 9999px, 55px, 0); }
+            30% { clip: rect(86px, 9999px, 73px, 0); }
+            100% { clip: rect(4px, 9999px, 91px, 0); }
+        }
+
+        @keyframes glitch-anim2 {
+            0% { clip: rect(65px, 9999px, 100px, 0); }
+            5% { clip: rect(52px, 9999px, 74px, 0); }
+            10% { clip: rect(79px, 9999px, 85px, 0); }
+            15% { clip: rect(75px, 9999px, 5px, 0); }
+            20% { clip: rect(67px, 9999px, 61px, 0); }
+            100% { clip: rect(38px, 9999px, 49px, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo glitch" data-text="NEXUS CORE">NEXUS CORE</div>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-value" id="nodeCount">247</div>
+                    <div class="status-label">ACTIVE NODES</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-value" id="threatCount">18</div>
+                    <div class="status-label">ACTIVE THREATS</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-value" id="systemStatus">ONLINE</div>
+                    <div class="status-label">SYSTEM STATUS</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Panel -->
+        <div class="panel">
+            <div class="panel-title">⚡ SYSTEM METRICS</div>
+            <div class="panel-content">
+                <div class="metric">
+                    <div class="metric-header">
+                        <span>PROCESSOR LOAD</span>
+                        <span id="cpuValue">78%</span>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" id="cpuBar" style="width: 78%"></div>
+                    </div>
+                </div>
+                
+                <div class="metric">
+                    <div class="metric-header">
+                        <span>MEMORY USAGE</span>
+                        <span id="memValue">64%</span>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" id="memBar" style="width: 64%"></div>
+                    </div>
+                </div>
+                
+                <div class="metric">
+                    <div class="metric-header">
+                        <span>NETWORK TRAFFIC</span>
+                        <span id="netValue">92%</span>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" id="netBar" style="width: 92%"></div>
+                    </div>
+                </div>
+                
+                <div class="metric">
+                    <div class="metric-header">
+                        <span>SECURITY INDEX</span>
+                        <span id="secValue">42%</span>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" id="secBar" style="width: 42%"></div>
+                    </div>
+                </div>
+
+                <div class="control-grid">
+                    <button class="control-btn" onclick="initiateScan()">INITIATE SCAN</button>
+                    <button class="control-btn" onclick="toggleMonitoring()">PAUSE MONITOR</button>
+                    <button class="control-btn" onclick="quarantineThreats()">ISOLATE THREATS</button>
+                    <button class="control-btn" onclick="systemReset()">SYSTEM RESET</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Panel -->
+        <div class="panel network-map">
+            <div class="panel-title">🌐 NETWORK TOPOLOGY</div>
+            <canvas id="networkCanvas"></canvas>
+            <div class="scanline"></div>
+            <div class="map-overlay">
+                <div class="map-stats">
+                    <div class="stat">
+                        <div class="stat-value" id="packets">284,951</div>
+                        <div class="stat-label">PACKETS/SEC</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="connections">2,147</div>
+                        <div class="stat-label">CONNECTIONS</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="anomalies">23</div>
+                        <div class="stat-label">ANOMALIES</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="bandwidth">14.2</div>
+                        <div class="stat-label">GB/S</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="panel">
+            <div class="panel-title">⚠ THREAT INTELLIGENCE</div>
+            <div class="panel-content">
+                <div class="threat-item critical">
+                    <div class="threat-header">
+                        <div class="threat-level">CRITICAL</div>
+                        <div class="threat-time">2:34 ago</div>
+                    </div>
+                    <div class="threat-title">ZERO-DAY EXPLOIT DETECTED</div>
+                    <div class="threat-desc">Kernel-level vulnerability in Node 47</div>
+                </div>
+                
+                <div class="threat-item critical">
+                    <div class="threat-header">
+                        <div class="threat-level">CRITICAL</div>
+                        <div class="threat-time">5:12 ago</div>
+                    </div>
+                    <div class="threat-title">DATA EXFILTRATION ATTEMPT</div>
+                    <div class="threat-desc">Suspicious outbound traffic to unknown IP</div>
+                </div>
+                
+                <div class="threat-item warning">
+                    <div class="threat-header">
+                        <div class="threat-level">WARNING</div>
+                        <div class="threat-time">8:45 ago</div>
+                    </div>
+                    <div class="threat-title">UNAUTHORIZED ACCESS</div>
+                    <div class="threat-desc">Multiple failed login attempts detected</div>
+                </div>
+                
+                <div class="threat-item">
+                    <div class="threat-header">
+                        <div class="threat-level">MONITORING</div>
+                        <div class="threat-time">12:31 ago</div>
+                    </div>
+                    <div class="threat-title">PORT SCAN DETECTED</div>
+                    <div class="threat-desc">External IP scanning network ports</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Panels -->
+        <div class="panel">
+            <div class="panel-title">📟 SYSTEM LOG</div>
+            <div class="terminal" id="terminal">
+                <div class="terminal-line">
+                    <span class="terminal-time">[14:23:45]</span>
+                    <span class="terminal-info">System initialization complete</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-time">[14:24:12]</span>
+                    <span class="terminal-warning">Unusual network pattern detected</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-time">[14:24:33]</span>
+                    <span class="terminal-critical">CRITICAL: Zero-day exploit identified</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-time">[14:25:01]</span>
+                    <span class="terminal-info">Isolation protocol initiated</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">📊 ACTIVITY MONITOR</div>
+            <div class="graph-container">
+                <canvas id="activityGraph"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Network Visualization
+        const canvas = document.getElementById('networkCanvas');
+        const ctx = canvas.getContext('2d');
+        const graphCanvas = document.getElementById('activityGraph');
+        const graphCtx = graphCanvas.getContext('2d');
+
+        let nodes = [];
+        let isRunning = true;
+
+        class NetworkNode {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = Math.random() * 4 + 2;
+                this.type = Math.random() > 0.7 ? 'threat' : Math.random() > 0.5 ? 'warning' : 'normal';
+                this.pulse = 0;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+                
+                this.pulse += 0.05;
+            }
+
+            draw() {
+                const colors = {
+                    normal: '#ff3333',
+                    warning: '#ff6666',
+                    threat: '#ff0000'
+                };
+
+                const pulseSize = Math.sin(this.pulse) * 2;
+                const size = this.size + pulseSize;
+
+                // Glow effect
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = colors[this.type];
+                ctx.fillStyle = colors[this.type];
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function initNetwork() {
+            nodes = [];
+            for (let i = 0; i < 60; i++) {
+                nodes.push(new NetworkNode());
+            }
+        }
+
+        function drawConnections() {
+            nodes.forEach((node1, i) => {
+                nodes.slice(i + 1).forEach(node2 => {
+                    const dx = node1.x - node2.x;
+                    const dy = node1.y - node2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 120) {
+                        ctx.strokeStyle = `rgba(255, 51, 51, ${0.3 - dist/400})`;
+                        ctx.beginPath();
+                        ctx.moveTo(node1.x, node1.y);
+                        ctx.lineTo(node2.x, node2.y);
+                        ctx.stroke();
+                    }
+                });
+            });
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (isRunning) {
+                drawConnections();
+                nodes.forEach(node => {
+                    node.update();
+                    node.draw();
+                });
+            }
+
+            drawActivityGraph();
+            updateMetrics();
+            requestAnimationFrame(animate);
+        }
+
+        // Activity Graph
+        let graphData = Array(40).fill(0).map(() => Math.random() * 80 + 20);
+        function drawActivityGraph() {
+            graphCtx.fillStyle = '#000';
+            graphCtx.fillRect(0, 0, graphCanvas.width, graphCanvas.height);
+
+            graphData.push(Math.random() * 80 + 20);
+            if (graphData.length > 40) graphData.shift();
+
+            const barWidth = graphCanvas.width / graphData.length;
+            graphData.forEach((value, i) => {
+                const height = (value / 100) * graphCanvas.height;
+                const gradient = graphCtx.createLinearGradient(0, graphCanvas.height - height, 0, graphCanvas.height);
+                gradient.addColorStop(0, '#ff3333');
+                gradient.addColorStop(1, '#660000');
+                
+                graphCtx.fillStyle = gradient;
+                graphCtx.fillRect(i * barWidth, graphCanvas.height - height, barWidth - 1, height);
+            });
+        }
+
+        // Metrics Update
+        function updateMetrics() {
+            const metrics = ['cpu', 'mem', 'net', 'sec'];
+            metrics.forEach(metric => {
+                const current = parseInt(document.getElementById(metric + 'Value').textContent);
+                const change = (Math.random() - 0.5) * 4;
+                const newValue = Math.max(10, Math.min(95, current + change));
+                
+                document.getElementById(metric + 'Value').textContent = Math.round(newValue) + '%';
+                document.getElementById(metric + 'Bar').style.width = newValue + '%';
+            });
+
+            // Update real-time stats
+            document.getElementById('packets').textContent = Math.floor(280000 + Math.random() * 10000).toLocaleString();
+            document.getElementById('connections').textContent = Math.floor(2100 + Math.random() * 100);
+            document.getElementById('anomalies').textContent = Math.floor(20 + Math.random() * 8);
+        }
+
+        // Control Functions
+        function initiateScan() {
+            initNetwork();
+            addLog('SYSTEM', 'Full network scan initiated');
+        }
+
+        function toggleMonitoring() {
+            isRunning = !isRunning;
+            addLog('SYSTEM', isRunning ? 'Monitoring resumed' : 'Monitoring paused');
+        }
+
+        function quarantineThreats() {
+            nodes.forEach(node => {
+                if (node.type === 'threat') node.type = 'warning';
+            });
+            addLog('SECURITY', 'Threat quarantine protocol activated');
+        }
+
+        function systemReset() {
+            initNetwork();
+            graphData = Array(40).fill(0).map(() => Math.random() * 80 + 20);
+            addLog('SYSTEM', 'System reset complete');
+        }
+
+        // Terminal Log
+        function addLog(type, message) {
+            const terminal = document.getElementById('terminal');
+            const time = new Date().toLocaleTimeString('en-US', {hour12: false});
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            
+            let className = 'terminal-info';
+            if (type === 'SECURITY') className = 'terminal-warning';
+            if (type === 'CRITICAL') className = 'terminal-critical';
+
+            line.innerHTML = `<span class="terminal-time">[${time}]</span><span class="${className}">${message}</span>`;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+
+            if (terminal.children.length > 8) {
+                terminal.removeChild(terminal.firstChild);
+            }
+        }
+
+        // Initialize
+        function resize() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            graphCanvas.width = graphCanvas.offsetWidth;
+            graphCanvas.height = graphCanvas.offsetHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        initNetwork();
+        animate();
+
+        // Auto-update logs
+        setInterval(() => {
+            const events = [
+                ['SYSTEM', 'Network traffic analysis completed'],
+                ['SECURITY', 'Suspicious activity detected in sector B'],
+                ['SYSTEM', 'Firewall rules updated successfully'],
+                ['CRITICAL', 'Unauthorized access attempt blocked']
+            ];
+            const [type, message] = events[Math.floor(Math.random() * events.length)];
+            addLog(type, message);
+        }, 5000);
+    </script>
+</body>
+</html>
